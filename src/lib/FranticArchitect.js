@@ -27,22 +27,21 @@ export default class FranticArchitect {
     this.currentLoopLength = 0;
 
     this.phantomShape = undefined;
-    this.world = new CANNON.World({
+    this.cannonWorld = new CANNON.World({
       gravity: new CANNON.Vec3(0, -10, 0),
-	  
     });
     this._addGround();
     this._addCompoundBody();
 
-    this.gg = new THREE.Group();
+    this.threeGroup = new THREE.Group();
     this._initGame();
     this._renderInitialBlock();
     this._renderPhantomBlock();
   }
 
-  update(dt) {
-    this.world.fixedStep();
-    this.currentLoopLength += dt;
+  update(delta) {
+    this.cannonWorld.fixedStep();
+    this.currentLoopLength += delta;
     if (this.currentLoopLength > this.gameLoopLength) {
       this.currentLoopLength = 0;
       this._displayPhantomBlock();
@@ -73,35 +72,45 @@ export default class FranticArchitect {
 
   _randomizePhantomXYZ() {
     this._updatePhantomXYZ();
-    const r = () => {
+
+    const randomBlocks = () => {
       const axis = Math.floor(Math.random() * 3);
       const direction = Math.floor(Math.random() * 2);
       const delta = direction === 0 ? 1 : -1;
+
       if (axis === 0) {
         this.phantomX += delta;
-      } else if (axis === 1) {
+        return;
+      }
+
+      if (axis === 1) {
         if (this.y <= 0.1) {
           this.phantomY = 1;
-        } else {
-          this.phantomY += delta;
+          return;
         }
-      } else {
-        this.phantomZ += delta;
+        // else {
+        this.phantomY += delta;
+        // }
+        return;
       }
+      //   else {
+      this.phantomZ += delta;
+      //   }
     };
-    r();
+    randomBlocks();
+
     const blockAlreadyExists = () => {
-      return this.existingBlocks.some((block) => {
-        return (
+      return this.existingBlocks.some(
+        (block) =>
           block.x === this.phantomX &&
           block.y === this.phantomY &&
           block.z === this.phantomZ
-        );
-      });
+      );
     };
+
     while (blockAlreadyExists()) {
       this._updatePhantomXYZ();
-      r();
+      randomBlocks();
     }
   }
 
@@ -140,7 +149,6 @@ export default class FranticArchitect {
     if (this.phantomBlockAccepted) {
       this.phantomBlockAccepted = false;
       this.addBlockToScene(this.x, this.y, this.z);
-    //   console.log(this.compoundBody.shapeOffsets);
     } else {
       // NOTE: This fails with a warning on the first run.
       this.compoundBody.removeShape(this.phantomShape);
@@ -196,7 +204,7 @@ export default class FranticArchitect {
 
   _renderPhantomBlock() {
     this.phantomGroup = new THREE.Group();
-    this.gg.add(this.phantomGroup);
+    this.threeGroup.add(this.phantomGroup);
   }
 
   _renderInitialBlock() {
@@ -208,7 +216,7 @@ export default class FranticArchitect {
       initialBlockMaterial
     );
     this.compoundShapeGroup.add(initialBlockMesh);
-    this.gg.add(this.compoundShapeGroup);
+    this.threeGroup.add(this.compoundShapeGroup);
   }
 
   animatePhantomGroup() {
@@ -246,7 +254,6 @@ export default class FranticArchitect {
     this.compoundBody = new CANNON.Body({
       mass: this.mass,
       material: slipperyMaterial,
-	  
     });
     this.compoundBody.position.set(0, 0, 0);
     this.compoundBody.quaternion.setFromEuler(0, 0, 0);
@@ -259,8 +266,7 @@ export default class FranticArchitect {
     // this.compoundBody.addShape(shape, new CANNON.Vec3(0, 0, -3 * size));
     // this.compoundBody.addShape(shape, new CANNON.Vec3(0, 0, -4 * size));
 
-    this.world.addBody(this.compoundBody);
-	
+    this.cannonWorld.addBody(this.compoundBody);
   }
 
   _addGround() {
@@ -271,7 +277,7 @@ export default class FranticArchitect {
     groundBody.addShape(groundShape);
     groundBody.quaternion.setFromEuler(0, 0, 0);
     groundBody.position.set(this.groundX, this.groundY, this.groundZ);
-    this.world.addBody(groundBody);
+    this.cannonWorld.addBody(groundBody);
   }
 
   _initGame() {
@@ -279,6 +285,6 @@ export default class FranticArchitect {
     const boxMaterial = new THREE.MeshPhongMaterial({ color: 0x218200 });
     const boxBase = new THREE.Mesh(boxGeometry, boxMaterial);
     boxBase.position.y = -1;
-    this.gg.add(boxBase);
+    this.threeGroup.add(boxBase);
   }
 }
